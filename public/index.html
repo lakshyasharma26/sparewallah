@@ -1,0 +1,295 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b0e14">
+  <title>Sparewallah | Genuine EV Spare Parts</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Teko:wght@600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+  <!-- TOP HEADER / NAVBAR (WHATSAPP REMOVED, CONTACT SCROLLS TO FOOTER) -->
+  <header class="topbar">
+    <div class="container nav">
+      <div class="nav-left">
+        <a class="logo" href="javascript:void(0)" onclick="showStoreView()">
+          <span class="logo-gear">⚙</span> SPARE<span>WALLAH</span>
+        </a>
+      </div>
+
+      <!-- Quick Contact Button Scrolling Directly to Footer -->
+      <div class="nav-contact-links">
+        <a href="#contactSection" class="head-contact-btn call-btn">
+          📞 Contact Us
+        </a>
+      </div>
+
+      <div class="nav-right">
+        <div class="nav-search-wrap">
+          <input id="search" oninput="debouncedSearch(this.value)" placeholder="Search parts, SKU, category...">
+        </div>
+        <button class="icon-btn" onclick="openCart()" title="Cart">
+          🛒 Cart <b id="cartCountBadge">0</b>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- BANNER CONTAINER -->
+  <div class="relative" id="banner-container">
+    <div class="container banner-inner">
+      <img src="/images/banner.jpg" alt="Sparewallah Banner" class="banner-img" onerror="this.style.display='none'">
+    </div>
+  </div>
+
+  <!-- HORIZONTAL CATEGORY SLIDER -->
+  <section class="category-slider-strip">
+    <div class="container slider-container">
+      <button class="slider-btn left" onclick="scrollSlider(-240)">‹</button>
+      <div id="categorySlider" class="category-slider">
+        <!-- Injected dynamically -->
+      </div>
+      <button class="slider-btn right" onclick="scrollSlider(240)">›</button>
+    </div>
+  </section>
+
+  <!-- FILTER & SORTING STRIP -->
+  <div class="filter-strip">
+    <div class="container filter-content">
+      <div class="filter-group">
+        <span class="filter-label">⚙ Filter:</span>
+        <select id="tagFilter" onchange="filterByVehicle(this.value)">
+          <option value="all">All Vehicles</option>
+          <option value="E-Scooty">E-Scooty</option>
+          <option value="E-Rickshaw">E-Rickshaw</option>
+          <option value="Universal">Universal</option>
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <span class="filter-label">⇅ Sort By:</span>
+        <select id="sortFilter" onchange="sortByOption(this.value)">
+          <option value="default">Featured / Default</option>
+          <option value="low-to-high">Price: Low to High</option>
+          <option value="high-to-low">Price: High to Low</option>
+          <option value="discount">Highest Discount (% OFF)</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN CONTAINER -->
+  <main class="container page-body">
+
+    <!-- VIEW 1: 3-COLUMN STORE VIEW -->
+    <section id="storeLayoutView" class="store-3col-layout">
+      <!-- LEFT SIDEBAR -->
+      <aside class="sidebar-categories">
+        <h4 class="sidebar-title">Categories</h4>
+        <ul id="verticalCategoryList" class="cat-list">
+          <!-- Injected dynamically -->
+        </ul>
+      </aside>
+
+      <!-- MIDDLE COLUMN: ALL CATEGORIES WITH PRODUCTS -->
+      <section class="products-listing-col" id="allCategoriesSectionsContainer">
+        <!-- Dynamically rendered category product blocks -->
+      </section>
+
+      <!-- RIGHT COLUMN: DESKTOP EMBEDDED CART -->
+      <aside class="sidebar-cart">
+        <h3 class="cart-heading">Parts Cart</h3>
+        <div id="embeddedCartContent" class="embedded-cart-box">
+          <div class="empty-cart-state">
+            <span class="empty-bag-icon">🛍️</span>
+            <p>Cart is empty</p>
+          </div>
+        </div>
+      </aside>
+    </section>
+
+    <!-- VIEW 2: PRODUCT DETAIL PAGE -->
+    <section id="productDetailView" class="hidden">
+      <!-- Breadcrumbs -->
+      <div id="breadcrumbBar" class="breadcrumbs">
+        <a href="javascript:void(0)" onclick="showStoreView()">Home</a>
+        <span> / </span>
+        <a href="javascript:void(0)" id="crumbCategory" onclick="showStoreView()">Category</a>
+        <span> / </span>
+        <span id="crumbProductName" class="crumb-current">Product Title</span>
+      </div>
+
+      <div class="product-detail-layout">
+        <!-- LEFT: BIG PRODUCT IMAGE -->
+        <div class="detail-gallery-col">
+          <div class="detail-main-img-box">
+            <img id="detailMainImg" src="" alt="Product">
+          </div>
+        </div>
+
+        <!-- RIGHT: PRODUCT INFO & ADD TO CART -->
+        <div class="detail-info-col">
+          <h1 id="detailTitle" class="detail-title">Product Title</h1>
+          <div class="detail-price-line">
+            <span id="detailPrice" class="detail-price">₹0</span>
+            <span id="detailMrp" class="detail-mrp">₹0</span>
+            <span id="detailDiscountBadge" class="badge-discount-detail">0% OFF</span>
+          </div>
+
+          <!-- Quantity & Add to Cart Button -->
+          <div class="detail-cta-row">
+            <div class="detail-qty-picker">
+              <button onclick="adjustDetailQty(-1)">−</button>
+              <span id="detailQtyValue">1</span>
+              <button onclick="adjustDetailQty(1)">+</button>
+            </div>
+            <button id="detailAddToCartBtn" class="btn-primary-add" onclick="addCurrentProductToCart()">
+              Add to Cart 🛒
+            </button>
+          </div>
+
+          <!-- Description & Details -->
+          <div class="detail-content-section">
+            <h3 class="section-subtitle">Description</h3>
+            <p id="detailCompatibilityNote" class="compat-tag"></p>
+            <h2 id="detailSubHeading" class="detail-subheading"></h2>
+            <p id="detailDescriptionText" class="detail-desc-text"></p>
+
+            <div class="detail-spec-box">
+              <h4>Key Features & Specifications</h4>
+              <ul id="detailFeaturesList"></ul>
+            </div>
+
+            <div class="detail-spec-box">
+              <h4>Vehicle Fitment & Compatibility</h4>
+              <p id="detailFitmentText"></p>
+            </div>
+
+            <div class="detail-spec-box">
+              <h4>Warranty & Service</h4>
+              <p id="detailWarrantyText"></p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SIMILAR PRODUCTS GRID -->
+      <div class="similar-section">
+        <h3 class="similar-heading">Similar Spare Parts</h3>
+        <div id="similarProductsGrid" class="similar-grid">
+          <!-- Injected dynamically -->
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- FOOTER (WITH ICONS, PRE-DEFINED WA MESSAGE, MAP & DEVELOPED BY LAKSHYA SHARMA) -->
+  <footer class="site-footer" id="contactSection">
+    <div class="container footer-contact-grid">
+      <!-- Col 1: Brand Info -->
+      <div class="footer-block brand-block">
+        <a class="logo footer-logo-sm" href="javascript:void(0)" onclick="showStoreView()">
+          <span class="logo-gear">⚙</span> SPARE<span>WALLAH</span>
+        </a>
+        <p class="compact-desc">100% Genuine Heavy Duty Electric Vehicle Spare Parts for Workshops and Wholesale buyers.</p>
+        
+        <!-- Social Icons with Predefined Message -->
+        <div class="footer-social-icons">
+          <!-- WhatsApp Icon with Pre-defined Message -->
+          <a href="https://wa.me/917668133191?text=Hello%20Sparewallah,%20I%20need%20genuine%20EV%20spare%20parts%20%26%20quotation." target="_blank" class="social-icon-box wa" title="Chat on WhatsApp">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+              <path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.582 2.128 2.182-.573c.978.58 1.911.928 3.145.929 3.178 0 5.767-2.587 5.768-5.766 0-3.187-2.59-5.771-5.764-5.771zm3.392 8.244c-.144.405-.837.774-1.17.824-.312.045-.694.072-2.125-.521-1.428-.593-2.339-2.029-2.411-2.123-.071-.096-.583-.775-.583-1.479 0-.703.369-1.05.501-1.194.133-.144.29-.18.388-.18.098 0 .196.002.281.006.091.005.213-.035.333.253.124.298.423 1.031.46 1.106.037.075.062.163.012.261-.05.099-.075.16-.149.247-.075.086-.157.193-.224.259-.075.074-.153.155-.066.305.087.15.387.639.832 1.035.572.509 1.056.666 1.206.741.15.075.238.066.326-.037.088-.102.376-.438.476-.588.099-.15.2-.125.334-.075.136.049.865.408 1.014.482.149.075.249.112.286.175.037.062.037.362-.107.767zM12 2C6.477 2 2 6.477 2 12c0 1.891.524 3.66 1.434 5.178L2 22l4.981-1.309A9.957 9.957 0 0012 22c5.523 0 10-4.477 10-10S17.523 2 12 2z"/>
+            </svg>
+          </a>
+          <!-- Instagram Icon -->
+          <a href="https://instagram.com" target="_blank" class="social-icon-box insta" title="Follow on Instagram">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+              <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
+            </svg>
+          </a>
+        </div>
+      </div>
+
+      <!-- Col 2: Workshop Contact Details -->
+      <div class="footer-block contact-details-block">
+        <h4 class="footer-subheading">Contact Workshop</h4>
+        <p><strong>📞 Phone:</strong> <a href="tel:+917668133191">+91 76681 33191</a></p>
+        <p><strong>💬 WhatsApp:</strong> <a href="https://wa.me/917668133191?text=Hello%20Sparewallah,%20I%20need%20genuine%20EV%20spare%20parts%20%26%20quotation." target="_blank">+91 76681 33191</a></p>
+        <p><strong>📍 Location:</strong> Near Aalok Colony, Meerut Road, Hapur</p>
+        <p><a href="/admin.html" class="admin-quick-link">Admin Portal ↗</a></p>
+      </div>
+
+      <!-- Col 3: Embedded Small Location Map -->
+      <div class="footer-block map-block">
+        <h4 class="footer-subheading">Workshop Location</h4>
+        <div class="map-wrapper">
+          <!-- <iframe 
+            src="https://maps.google.com/maps?q=Uttar%20Pradesh,%20India&t=&z=12&ie=UTF8&iwloc=&output=embed" 
+            loading="lazy" 
+            referrerpolicy="no-referrer-when-downgrade">
+          </iframe> -->
+          <iframe 
+           src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d13994.399571033042!2d77.7544384554199!3d28.731501!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x390c85b6acd20205%3A0xca5d3975a62380d6!2sZELIO%20E%20BIKES%20-%20ACE%20ELECTRIC!5e0!3m2!1sen!2sin!4v1791643712172!5m2!1sen!2sin"
+           loading="lazy"
+           referrerpolicy="no-referrer-when-downgrade">
+          </iframe>
+        </div>
+      </div>
+    </div>
+
+    <!-- SUB-FOOTER WITH 'DEVELOPED BY LAKSHYA SHARMA' -->
+    <div class="footer-bottom-mini">
+      <div class="container bottom-bar-content">
+        <p>© 2026 Sparewallah Spares & Workshop. All Rights Reserved.</p>
+        <p class="developed-by">Developed by <span>Lakshya Sharma</span></p>
+      </div>
+    </div>
+  </footer>
+
+  <!-- MOBILE/MODAL CART DRAWER -->
+  <div id="cartDrawer" class="drawer">
+    <div class="drawer-panel">
+      <div class="drawer-head">
+        <h2>Your Parts Cart</h2>
+        <button onclick="closeCart()">×</button>
+      </div>
+      <div id="drawerCartItems"></div>
+      <div class="cart-footer">
+        <div class="total-row">
+          <span>Total Payable:</span>
+          <strong id="drawerCartTotal">₹0</strong>
+        </div>
+        <button class="btn-primary-add full" onclick="openCheckout()">Proceed to Checkout</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- CHECKOUT MODAL -->
+  <div id="checkoutModal" class="modal">
+    <div class="modal-card">
+      <div class="drawer-head">
+        <h2>Complete Workshop Order</h2>
+        <button onclick="closeCheckout()">×</button>
+      </div>
+      <form id="checkoutForm">
+        <input name="name" placeholder="Full name / Workshop name" required>
+        <input name="phone" placeholder="WhatsApp Number" required>
+        <textarea name="address" placeholder="Delivery Address with landmark" required></textarea>
+        <div class="two-inputs">
+          <input name="city" placeholder="City">
+          <input name="pincode" placeholder="PIN Code">
+        </div>
+        <button class="btn-primary-add full" type="submit">Confirm Order on WhatsApp</button>
+      </form>
+    </div>
+  </div>
+
+  <div id="toast"></div>
+  <script src="/js/app.js"></script>
+</body>
+</html>

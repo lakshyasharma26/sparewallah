@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Sparewallah Admin Panel</title>
+  <link rel="stylesheet" href="/css/admin.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Teko:wght@600;700&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<!-- LOGIN VIEW -->
+<div id="loginView" class="auth-screen">
+  <form id="loginForm" class="auth-card" onsubmit="return false;">
+    <div class="admin-logo">⚙ SPARE<span>WALLAH</span> ADMIN</div>
+    <p class="auth-subtitle">Spare Parts Inventory & Orders Control</p>
+    <input id="email" type="email" placeholder="Admin Email" required>
+    <input id="password" type="password" placeholder="Password" required>
+    <button type="submit" class="btn primary">Login to Dashboard</button>
+    <p id="loginMsg"></p>
+    
+    <!-- BACK TO WEBSITE BUTTON -->
+    <a href="/" class="btn" style="text-align: center; text-decoration: none; background: #18202e; color: var(--ink); border: 1px solid var(--line); margin-top: 4px;">
+      ← Back to Website
+    </a>
+  </form>
+</div>
+
+<!-- DASHBOARD VIEW -->
+<div id="appView" class="admin-app hidden">
+  <aside>
+    <div class="admin-logo">⚙ SPARE<span>WALLAH</span></div>
+    
+    <a href="/" class="side" style="text-decoration: none; color: var(--accent); background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.2); display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+      🌐 Back to Website
+    </a>
+
+    <div class="nav-links">
+      <button class="side active" data-page="dashboard">📊 Dashboard</button>
+      <button class="side" data-page="products">🔩 Spare Parts</button>
+      <button class="side" data-page="orders">📦 Orders</button>
+      <button class="side" data-page="add">➕ Add New Part</button>
+    </div>
+    <button id="logout" class="logout">🚪 Logout</button>
+  </aside>
+
+  <main class="admin-main">
+    <header class="admin-head">
+      <div>
+        <p class="muted">CONTROL PANEL • WORKSHOP & SPARES</p>
+        <h1 id="pageTitle">Dashboard</h1>
+      </div>
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <a href="/" target="_blank" class="btn" style="text-decoration: none; background: #141b27; color: var(--ink); border: 1px solid var(--line); font-size: 12px; padding: 7px 12px;">
+          View Live Store ↗
+        </a>
+        <div class="user-badge">
+          <span class="user-dot"></span>
+          <span id="adminEmail"></span>
+        </div>
+      </div>
+    </header>
+
+    <section id="dashboardPage" class="page"></section>
+    <section id="productsPage" class="page hidden"></section>
+    <section id="ordersPage" class="page hidden"></section>
+    <section id="addPage" class="page hidden"></section>
+  </main>
+</div>
+
+<!-- SPARE PART HISTORY MODAL -->
+<div id="historyModal" class="custom-modal hidden">
+  <div class="custom-modal-card">
+    <div class="modal-head">
+      <div>
+        <h2 id="historyPartName" style="margin:0;font-size:20px;color:var(--accent)">Part History</h2>
+        <small id="historyPartSku" style="color:var(--muted)">SKU Code</small>
+      </div>
+      <button class="modal-close" onclick="closeHistoryModal()">×</button>
+    </div>
+
+    <!-- Quick Stats -->
+    <div class="history-stats-strip">
+      <div class="h-stat">
+        <small>Total Units Sold</small>
+        <strong id="historyTotalSold">0 Units</strong>
+      </div>
+      <div class="h-stat">
+        <small>Generated Sales</small>
+        <strong id="historyTotalRevenue" style="color:var(--green)">₹0</strong>
+      </div>
+    </div>
+
+    <!-- History Orders List -->
+    <h4 style="margin:16px 0 10px;color:#fff;">Associated Orders</h4>
+    <div class="table-wrap" style="max-height: 280px; overflow-y: auto;">
+      <table>
+        <thead>
+          <tr>
+            <th>Order No</th>
+            <th>Customer</th>
+            <th>Qty</th>
+            <th>Amount</th>
+            <th>Status</th>
+            <th>Date</th>
+          </tr>
+        </thead>
+        <tbody id="historyOrdersTbody">
+          <!-- Injected dynamically -->
+        </tbody>
+      </table>
+    </div>
+
+    <div style="text-align: right; margin-top: 18px;">
+      <button class="btn" style="background:#222c3d" onclick="closeHistoryModal()">Close</button>
+    </div>
+  </div>
+</div>
+<!-- REPORT & LOW STOCK ALERT MODAL -->
+<div id="reportModal" class="custom-modal hidden">
+  <div class="custom-modal-card" style="width: min(880px, 95%);">
+    <div class="modal-head">
+      <div>
+        <h2 id="reportModalTitle" style="margin:0;font-size:20px;color:var(--accent);">Report</h2>
+        <small id="reportModalSubtitle" style="color:var(--muted);"></small>
+      </div>
+      <button class="modal-close" onclick="closeReportModal()">×</button>
+    </div>
+
+    <div class="table-wrap" style="max-height: 400px; overflow-y: auto; margin-top: 16px;">
+      <table>
+        <thead id="reportModalThead"></thead>
+        <tbody id="reportModalTbody"></tbody>
+      </table>
+    </div>
+
+    <div style="text-align: right; margin-top: 18px;">
+      <button class="btn" style="background:#222c3d" onclick="closeReportModal()">Close</button>
+    </div>
+  </div>
+</div>
+
+<div id="adminToast"></div>
+<script src="/js/admin.js?v=4"></script>
+</body>
+</html>
