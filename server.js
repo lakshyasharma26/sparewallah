@@ -24,7 +24,11 @@ app.use(express.static(path.join(ROOT, "public")));
 // Supabase Client Initialization
 const supabase = createClient(
   process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_KEY
+  process.env.SUPABASE_SERVICE_KEY,
+  {
+    auth: { persistSession: false },
+    realtime: { autoRefreshToken: false, createClient: false }
+  }
 );
 
 // PostgreSQL Connection Pool Setup
