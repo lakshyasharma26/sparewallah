@@ -282,9 +282,19 @@ app.get("/api/admin/orders", auth, async (_, res) => {
     const { rows: orders } = await pool.query("SELECT * FROM orders ORDER BY id DESC LIMIT 500");
     for (let order of orders) {
       order._id = String(order.id);
-      const itemRes = await pool.query("SELECT * FROM order_items WHERE order_id = $1", [order.id]);
-      order.items = itemRes.rows;
+      
+      // PostgreSQL lowercase issue fix: ensure both orderId and orderid exist
+      order.orderId = order.orderid || order.orderId || `ORD-${String(order.id).padStart(4, "0")}`;
 
+      const itemRes = await pool.query("SELECT * FROM order_items WHERE order_id = $1", [order.id]);
+      
+      // item field names compatibility
+      order.items = itemRes.rows.map(item => ({
+        ...item,
+        productId: item.productid || item.productId
+      }));
+
+      // Customer format
       order.customer = {
         name: order.customer_name,
         phone: order.customer_phone,
