@@ -63,15 +63,16 @@ function publicProduct(p) {
     id: String(p.id),
     _id: String(p.id),
     name: p.name,
-    brand: p.brand,
-    type: p.type,
-    category: p.category,
-    sku: p.sku,
-    description: p.description,
-    price: Number(p.price),
-    mrp: Number(p.mrp),
-    stock: Number(p.stock),
-    image: p.image,
+    brand: p.brand || "",
+    type: p.type || "",
+    category: p.category || "",
+    sku: p.sku || "",
+    description: p.description || "",
+    price: Number(p.price || 0),
+    mrp: Number(p.mrp || 0),
+    stock: Number(p.stock || 0),
+    image: p.image || p.image_url || "",      // <-- Yahan fallback add karein
+    image_url: p.image_url || p.image || "",  // <-- Frontend agar image_url expect kare
     active: p.active === 1 || p.active === true
   };
 }
