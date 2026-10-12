@@ -7,6 +7,7 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const multer = require("multer");
 const { Pool } = require("pg");
+const { createClient } = require("@supabase/supabase-js");
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -20,6 +21,12 @@ app.use(express.urlencoded({ extended: true }));
 app.use("/uploads", express.static(UPLOADS));
 app.use(express.static(path.join(ROOT, "public")));
 
+// Supabase Client Initialization
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_KEY
+);
+
 // PostgreSQL Connection Pool Setup
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -28,14 +35,8 @@ const pool = new Pool({
     : { rejectUnauthorized: false }
 });
 
-const storage = multer.diskStorage({
-  destination: (_, __, cb) => cb(null, UPLOADS),
-  filename: (_, file, cb) => {
-    const safe = file.originalname.replace(/[^a-zA-Z0-9.-]/g, "-");
-    cb(null, `${Date.now()}-${safe}`);
-  }
-});
-
+// Multer in-memory storage for cloud upload
+const storage = multer.memoryStorage();
 const upload = multer({
   storage,
   limits: { fileSize: 5 * 1024 * 1024 },
@@ -44,6 +45,29 @@ const upload = multer({
     else cb(new Error("Only JPG, PNG or WEBP images are allowed"));
   }
 });
+
+// Helper: Upload image buffer directly to Supabase Storage Bucket
+async function uploadToSupabase(file) {
+  if (!file) return "";
+
+  const ext = path.extname(file.originalname);
+  const fileName = `${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`;
+
+  const { error } = await supabase.storage
+    .from("product-images")
+    .upload(fileName, file.buffer, {
+      contentType: file.mimetype,
+      upsert: false
+    });
+
+  if (error) throw error;
+
+  const { data: publicUrlData } = supabase.storage
+    .from("product-images")
+    .getPublicUrl(fileName);
+
+  return publicUrlData.publicUrl;
+}
 
 // Authentication Middleware
 function auth(req, res, next) {
@@ -57,115 +81,6 @@ function auth(req, res, next) {
     res.status(401).json({ message: "Invalid or expired admin token" });
   }
 }
-const { createClient } = require('@supabase/supabase-js');
-
-// 1. Supabase client initialize karein
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_KEY
-);
-
-// 2. Multer ko Memory Storage par set karein (disk par save nahi hoga)
-const storage = multer.memoryStorage();
-const upload = multer({
-  storage,
-  limits: { fileSize: 5 * 1024 * 1024 },
-  fileFilter: (_, file, cb) => {
-    if (/^image\/(jpeg|png|webp|jpg)$/i.test(file.mimetype)) cb(null, true);
-    else cb(new Error("Only JPG, PNG or WEBP images are allowed"));
-  }
-});
-
-// Helper function: Supabase me image upload karke Public URL lene ke liye
-async function uploadToSupabase(file) {
-  if (!file) return "";
-  
-  const ext = path.extname(file.originalname);
-  const fileName = `${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`;
-  
-  const { data, error } = await supabase.storage
-    .from('product-images')
-    .upload(fileName, file.buffer, {
-      contentType: file.mimetype,
-      upsert: false
-    });
-
-  if (error) throw error;
-
-  // Public URL generate karein
-  const { data: publicUrlData } = supabase.storage
-    .from('product-images')
-    .getPublicUrl(fileName);
-
-  return publicUrlData.publicUrl;
-}
-app.post("/api/admin/products", auth, upload.single("image"), async (req, res) => {
-  try {
-    const data = req.body;
-    const activeStatus = data.active !== "false" ? 1 : 0;
-    
-    // Supabase bucket me upload karein aur URL lein
-    const imageUrl = req.file ? await uploadToSupabase(req.file) : "";
-
-    const { rows } = await pool.query(
-      `INSERT INTO products (name, brand, type, category, sku, description, price, mrp, stock, active, image) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *`,
-      [data.name, data.brand, data.type, data.category || "", data.sku, data.description || "", Number(data.price), Number(data.mrp || 0), Number(data.stock || 0), activeStatus, imageUrl]
-    );
-
-    res.status(201).json(publicProduct(rows[0]));
-  } catch (e) {
-    res.status(400).json({ message: e.message });
-  }
-});
-app.put("/api/admin/products/:id", auth, upload.single("image"), async (req, res) => {
-  try {
-    const id = req.params.id;
-    const check = await pool.query("SELECT * FROM products WHERE id = $1", [id]);
-    if (check.rows.length === 0) return res.status(404).json({ message: "Product not found" });
-
-    const updates = [];
-    const params = [];
-    const fields = ["name", "brand", "type", "category", "sku", "description"];
-
-    fields.forEach(k => {
-      if (req.body[k] !== undefined) {
-        params.push(req.body[k]);
-        updates.push(`${k} = $${params.length}`);
-      }
-    });
-
-    ["price", "mrp", "stock"].forEach(k => {
-      if (req.body[k] !== undefined) {
-        params.push(Number(req.body[k]));
-        updates.push(`${k} = $${params.length}`);
-      }
-    });
-
-    if (req.body.active !== undefined) {
-      params.push(req.body.active !== "false" ? 1 : 0);
-      updates.push(`active = $${params.length}`);
-    }
-
-    // Nayi image aayi ho toh Supabase me upload karein
-    if (req.file) {
-      const newImageUrl = await uploadToSupabase(req.file);
-      params.push(newImageUrl);
-      updates.push(`image = $${params.length}`);
-    }
-
-    if (updates.length > 0) {
-      params.push(id);
-      const query = `UPDATE products SET ${updates.join(", ")} WHERE id = $${params.length} RETURNING *`;
-      const updated = await pool.query(query, params);
-      return res.json(publicProduct(updated.rows[0]));
-    }
-
-    res.json(publicProduct(check.rows[0]));
-  } catch (e) {
-    res.status(400).json({ message: e.message });
-  }
-});
 
 function publicProduct(p) {
   return {
@@ -180,13 +95,13 @@ function publicProduct(p) {
     price: Number(p.price || 0),
     mrp: Number(p.mrp || 0),
     stock: Number(p.stock || 0),
-    image: p.image || p.image_url || "",      // <-- Yahan fallback add karein
-    image_url: p.image_url || p.image || "",  // <-- Frontend agar image_url expect kare
+    image: p.image || p.image_url || "",
+    image_url: p.image_url || p.image || "",
     active: p.active === 1 || p.active === true
   };
 }
 
-// --- API ROUTES ---
+// --- PUBLIC API ROUTES ---
 
 app.get("/api/products", async (req, res) => {
   try {
@@ -283,6 +198,8 @@ app.post("/api/orders", async (req, res) => {
   }
 });
 
+// --- ADMIN API ROUTES ---
+
 app.post("/api/admin/login", async (req, res) => {
   try {
     const email = String(req.body.email || "").toLowerCase().trim();
@@ -317,12 +234,14 @@ app.post("/api/admin/products", auth, upload.single("image"), async (req, res) =
   try {
     const data = req.body;
     const activeStatus = data.active !== "false" ? 1 : 0;
-    const imagePath = req.file ? `/uploads/${req.file.filename}` : "";
+    
+    // Supabase bucket upload
+    const imageUrl = req.file ? await uploadToSupabase(req.file) : "";
 
     const { rows } = await pool.query(
       `INSERT INTO products (name, brand, type, category, sku, description, price, mrp, stock, active, image) 
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *`,
-      [data.name, data.brand, data.type, data.category || "", data.sku, data.description || "", Number(data.price), Number(data.mrp || 0), Number(data.stock || 0), activeStatus, imagePath]
+      [data.name, data.brand, data.type, data.category || "", data.sku, data.description || "", Number(data.price), Number(data.mrp || 0), Number(data.stock || 0), activeStatus, imageUrl]
     );
 
     res.status(201).json(publicProduct(rows[0]));
@@ -361,7 +280,8 @@ app.put("/api/admin/products/:id", auth, upload.single("image"), async (req, res
     }
 
     if (req.file) {
-      params.push(`/uploads/${req.file.filename}`);
+      const newImageUrl = await uploadToSupabase(req.file);
+      params.push(newImageUrl);
       updates.push(`image = $${params.length}`);
     }
 
@@ -392,19 +312,14 @@ app.get("/api/admin/orders", auth, async (_, res) => {
     const { rows: orders } = await pool.query("SELECT * FROM orders ORDER BY id DESC LIMIT 500");
     for (let order of orders) {
       order._id = String(order.id);
-      
-      // PostgreSQL lowercase issue fix: ensure both orderId and orderid exist
       order.orderId = order.orderid || order.orderId || `ORD-${String(order.id).padStart(4, "0")}`;
 
       const itemRes = await pool.query("SELECT * FROM order_items WHERE order_id = $1", [order.id]);
-      
-      // item field names compatibility
       order.items = itemRes.rows.map(item => ({
         ...item,
         productId: item.productid || item.productId
       }));
 
-      // Customer format
       order.customer = {
         name: order.customer_name,
         phone: order.customer_phone,
