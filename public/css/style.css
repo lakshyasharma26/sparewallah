@@ -767,7 +767,7 @@ body {
 }
 
 .bottom-bar-content p { margin: 0; }
-.developed-by span { color: var(--accent); font-weight: 700; }
+.developed-by a { color: var(--accent); font-weight: 700; text-decoration: none; }
 
 /* DRAWER & MODAL */
 .drawer, .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.75); backdrop-filter: blur(4px); z-index: 100; display: none; }
