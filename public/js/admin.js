@@ -107,7 +107,7 @@ function showPage(page) {
   if (page === "backup") backupPage();
 }
 
-// 1. Stock PDF Generator (Low Stock filter ke support ke sath)
+// 1. Stock PDF Generator (Fixed Price formatting & spacing)
 function downloadStockPDF(onlyLowStock = false) {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
@@ -117,20 +117,20 @@ function downloadStockPDF(onlyLowStock = false) {
     : cachedProducts;
 
   const title = onlyLowStock ? "SPAREWALLAH - LOW STOCK ALERT REPORT" : "SPAREWALLAH - COMPLETE STOCK INVENTORY";
-  doc.setFontSize(16);
+  doc.setFontSize(15);
   doc.setTextColor(245, 158, 11);
   doc.text(title, 14, 16);
 
-  doc.setFontSize(10);
+  doc.setFontSize(9);
   doc.setTextColor(100);
   doc.text(`Generated On: ${new Date().toLocaleString()} | Total Items: ${list.length}`, 14, 23);
 
   const tableData = list.map((p, i) => [
-    i + 1,
-    p.name,
-    p.sku,
+    String(i + 1),
+    p.name || "-",
+    p.sku || "-",
     p.category || p.type || "General",
-    `₹${p.price}`,
+    `Rs. ${Number(p.price || 0).toLocaleString("en-IN")}`,
     `${p.stock} Units`
   ]);
 
@@ -139,9 +139,22 @@ function downloadStockPDF(onlyLowStock = false) {
     head: [["#", "Part Name", "SKU Code", "Category", "Price", "Available Stock"]],
     body: tableData,
     theme: "grid",
-    headStyles: { fillColor: [19, 24, 34], textColor: [245, 158, 11] },
-    alternateRowStyles: { fillColor: [245, 247, 250] },
-    styles: { fontSize: 9 }
+    headStyles: { 
+      fillColor: [19, 24, 34], 
+      textColor: [245, 158, 11],
+      fontStyle: "bold"
+    },
+    styles: { 
+      font: "helvetica",
+      fontSize: 9, 
+      cellPadding: 5,
+      textColor: [30, 41, 59]
+    },
+    columnStyles: {
+      0: { cellWidth: 12, halign: "center" },
+      4: { halign: "right", fontStyle: "bold" },
+      5: { halign: "center" }
+    }
   });
 
   const fileName = onlyLowStock ? `Low-Stock-Report-${Date.now()}.pdf` : `Stock-Inventory-${Date.now()}.pdf`;
@@ -149,40 +162,54 @@ function downloadStockPDF(onlyLowStock = false) {
   toast("Stock PDF Downloaded!");
 }
 
-// 2. Orders PDF Generator
+// 2. Orders PDF Generator (Fixed Price formatting & spacing)
 function downloadOrdersPDF() {
   const { jsPDF } = window.jspdf;
-  const doc = new jsPDF("l", "pt", "a4"); // Landscape for orders table
+  const doc = new jsPDF("l", "pt", "a4");
 
-  doc.setFontSize(16);
+  doc.setFontSize(15);
   doc.setTextColor(245, 158, 11);
   doc.text("SPAREWALLAH - ORDERS REPORT", 30, 30);
 
-  doc.setFontSize(10);
+  doc.setFontSize(9);
   doc.setTextColor(100);
-  doc.text(`Generated On: ${new Date().toLocaleString()} | Total Orders: ${cachedOrders.length}`, 30, 46);
+  doc.text(`Generated On: ${new Date().toLocaleString()} | Total Orders: ${cachedOrders.length}`, 30, 44);
 
   const tableData = cachedOrders.map((o, idx) => {
     const items = (o.items || []).map(i => `${i.name} (x${i.quantity})`).join(", ");
     return [
-      idx + 1,
-      o.orderId,
+      String(idx + 1),
+      o.orderId || "-",
       o.customer?.name || "N/A",
       o.customer?.phone || "N/A",
-      items,
-      `₹${o.total}`,
-      o.status,
+      items || "-",
+      `Rs. ${Number(o.total || 0).toLocaleString("en-IN")}`,
+      o.status || "Pending",
       new Date(o.createdAt).toLocaleDateString()
     ];
   });
 
   doc.autoTable({
-    startY: 56,
+    startY: 54,
     head: [["#", "Order ID", "Customer", "Phone", "Items Ordered", "Total", "Status", "Date"]],
     body: tableData,
     theme: "grid",
-    headStyles: { fillColor: [19, 24, 34], textColor: [245, 158, 11] },
-    styles: { fontSize: 8.5 }
+    headStyles: { 
+      fillColor: [19, 24, 34], 
+      textColor: [245, 158, 11],
+      fontStyle: "bold"
+    },
+    styles: { 
+      font: "helvetica",
+      fontSize: 8.5, 
+      cellPadding: 5,
+      textColor: [30, 41, 59]
+    },
+    columnStyles: {
+      0: { cellWidth: 28, halign: "center" },
+      5: { halign: "right", fontStyle: "bold" },
+      6: { halign: "center" }
+    }
   });
 
   doc.save(`Orders-Report-${Date.now()}.pdf`);
