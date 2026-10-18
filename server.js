@@ -42,9 +42,9 @@ app.use(cors({
 // Preflight requests handling
 app.options("*", cors());
 
-// 3. Parsers aur static files
-app.use(express.json({ limit: "1mb" }));
-app.use(express.urlencoded({ extended: true }));
+// 3. Parsers aur static files (Restore payload ke liye limit 20mb rakhi hai)
+app.use(express.json({ limit: "20mb" }));
+app.use(express.urlencoded({ extended: true, limit: "20mb" }));
 app.use("/uploads", express.static(UPLOADS));
 app.use(express.static(path.join(ROOT, "public")));
 
@@ -250,20 +250,110 @@ app.post("/api/admin/login", async (req, res) => {
   }
 });
 
+// 1. Full Database JSON Backup Download
 app.get("/api/admin/backup", auth, async (_, res) => {
   try {
     const productsRes = await pool.query("SELECT * FROM products ORDER BY id ASC");
     const ordersRes = await pool.query("SELECT * FROM orders ORDER BY id ASC");
     const itemsRes = await pool.query("SELECT * FROM order_items ORDER BY id ASC");
 
-    res.json({
+    const backupData = {
+      version: "1.0",
       timestamp: new Date().toISOString(),
       products: productsRes.rows,
       orders: ordersRes.rows,
       order_items: itemsRes.rows
-    });
+    };
+
+    res.setHeader("Content-Disposition", `attachment; filename=sparewallah-backup-${Date.now()}.json`);
+    res.setHeader("Content-Type", "application/json");
+    res.send(JSON.stringify(backupData, null, 2));
   } catch (e) {
     res.status(500).json({ message: "Backup fetch failed: " + e.message });
+  }
+});
+
+// 2. Full Database Restore from Uploaded JSON
+app.post("/api/admin/restore", auth, async (req, res) => {
+  const { products, orders, order_items } = req.body;
+  if (!Array.isArray(products) || !Array.isArray(orders)) {
+    return res.status(400).json({ message: "Invalid backup file structure." });
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+
+    // Purana orders aur products data wipe karein (Admin credentials safe rahenge)
+    await client.query("DELETE FROM order_items");
+    await client.query("DELETE FROM orders");
+    await client.query("DELETE FROM products");
+
+    // Products restore
+    for (const p of products) {
+      await client.query(
+        `INSERT INTO products (id, name, brand, type, category, sku, description, price, mrp, stock, image, active, createdAt) 
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+         ON CONFLICT (id) DO UPDATE SET 
+           name = EXCLUDED.name,
+           brand = EXCLUDED.brand,
+           type = EXCLUDED.type,
+           category = EXCLUDED.category,
+           sku = EXCLUDED.sku,
+           description = EXCLUDED.description,
+           price = EXCLUDED.price,
+           mrp = EXCLUDED.mrp,
+           stock = EXCLUDED.stock,
+           image = EXCLUDED.image,
+           active = EXCLUDED.active`,
+        [p.id, p.name, p.brand, p.type, p.category || "", p.sku, p.description || "", p.price, p.mrp || 0, p.stock || 0, p.image || "", p.active ?? 1, p.createdat || p.createdAt || new Date()]
+      );
+    }
+
+    // Orders restore
+    for (const o of orders) {
+      await client.query(
+        `INSERT INTO orders (id, orderId, customer_name, customer_phone, customer_address, customer_city, customer_pincode, subtotal, total, status, source, createdAt) 
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+         ON CONFLICT (id) DO UPDATE SET 
+           orderId = EXCLUDED.orderId,
+           customer_name = EXCLUDED.customer_name,
+           customer_phone = EXCLUDED.customer_phone,
+           customer_address = EXCLUDED.customer_address,
+           customer_city = EXCLUDED.customer_city,
+           customer_pincode = EXCLUDED.customer_pincode,
+           subtotal = EXCLUDED.subtotal,
+           total = EXCLUDED.total,
+           status = EXCLUDED.status,
+           source = EXCLUDED.source`,
+        [o.id, o.orderid || o.orderId, o.customer_name, o.customer_phone, o.customer_address, o.customer_city || "", o.customer_pincode || "", o.subtotal, o.total, o.status, o.source, o.createdat || o.createdAt || new Date()]
+      );
+    }
+
+    // Order items restore
+    if (Array.isArray(order_items)) {
+      for (const item of order_items) {
+        await client.query(
+          `INSERT INTO order_items (id, order_id, productId, name, sku, price, quantity, subtotal)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+           ON CONFLICT (id) DO NOTHING`,
+          [item.id, item.order_id, item.productid || item.productId, item.name, item.sku, item.price, item.quantity, item.subtotal]
+        );
+      }
+    }
+
+    // Postgres SERIAL sequences update karein taaki naye orders/products insert hone par ID collision na aaye
+    await client.query(`SELECT setval('products_id_seq', COALESCE((SELECT MAX(id) FROM products), 1))`);
+    await client.query(`SELECT setval('orders_id_seq', COALESCE((SELECT MAX(id) FROM orders), 1))`);
+    await client.query(`SELECT setval('order_items_id_seq', COALESCE((SELECT MAX(id) FROM order_items), 1))`);
+
+    await client.query("COMMIT");
+    res.json({ message: "Database restored successfully!" });
+  } catch (err) {
+    await client.query("ROLLBACK");
+    res.status(500).json({ message: "Restore failed: " + err.message });
+  } finally {
+    client.release();
   }
 });
 

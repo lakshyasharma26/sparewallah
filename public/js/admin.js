@@ -95,13 +95,98 @@ function showPage(page) {
   if (el) el.classList.remove("hidden");
   const pageTitle = $("#pageTitle");
   if (pageTitle) {
-    pageTitle.textContent = page === "add" ? "Add / Edit Spare Part" : page === "products" ? "Spare Parts Inventory" : page[0].toUpperCase() + page.slice(1);
+    pageTitle.textContent = page === "add" ? "Add / Edit Spare Part" 
+      : page === "products" ? "Spare Parts Inventory" 
+      : page === "backup" ? "System Backup & Restore"
+      : page[0].toUpperCase() + page.slice(1);
   }
   if (page === "dashboard") dashboard();
   if (page === "products") products();
   if (page === "orders") orders();
   if (page === "add") addForm();
   if (page === "backup") backupPage();
+}
+
+// 1. Stock PDF Generator (Low Stock filter ke support ke sath)
+function downloadStockPDF(onlyLowStock = false) {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+
+  const list = onlyLowStock 
+    ? cachedProducts.filter(p => Number(p.stock) <= 5) 
+    : cachedProducts;
+
+  const title = onlyLowStock ? "SPAREWALLAH - LOW STOCK ALERT REPORT" : "SPAREWALLAH - COMPLETE STOCK INVENTORY";
+  doc.setFontSize(16);
+  doc.setTextColor(245, 158, 11);
+  doc.text(title, 14, 16);
+
+  doc.setFontSize(10);
+  doc.setTextColor(100);
+  doc.text(`Generated On: ${new Date().toLocaleString()} | Total Items: ${list.length}`, 14, 23);
+
+  const tableData = list.map((p, i) => [
+    i + 1,
+    p.name,
+    p.sku,
+    p.category || p.type || "General",
+    `₹${p.price}`,
+    `${p.stock} Units`
+  ]);
+
+  doc.autoTable({
+    startY: 28,
+    head: [["#", "Part Name", "SKU Code", "Category", "Price", "Available Stock"]],
+    body: tableData,
+    theme: "grid",
+    headStyles: { fillColor: [19, 24, 34], textColor: [245, 158, 11] },
+    alternateRowStyles: { fillColor: [245, 247, 250] },
+    styles: { fontSize: 9 }
+  });
+
+  const fileName = onlyLowStock ? `Low-Stock-Report-${Date.now()}.pdf` : `Stock-Inventory-${Date.now()}.pdf`;
+  doc.save(fileName);
+  toast("Stock PDF Downloaded!");
+}
+
+// 2. Orders PDF Generator
+function downloadOrdersPDF() {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF("l", "pt", "a4"); // Landscape for orders table
+
+  doc.setFontSize(16);
+  doc.setTextColor(245, 158, 11);
+  doc.text("SPAREWALLAH - ORDERS REPORT", 30, 30);
+
+  doc.setFontSize(10);
+  doc.setTextColor(100);
+  doc.text(`Generated On: ${new Date().toLocaleString()} | Total Orders: ${cachedOrders.length}`, 30, 46);
+
+  const tableData = cachedOrders.map((o, idx) => {
+    const items = (o.items || []).map(i => `${i.name} (x${i.quantity})`).join(", ");
+    return [
+      idx + 1,
+      o.orderId,
+      o.customer?.name || "N/A",
+      o.customer?.phone || "N/A",
+      items,
+      `₹${o.total}`,
+      o.status,
+      new Date(o.createdAt).toLocaleDateString()
+    ];
+  });
+
+  doc.autoTable({
+    startY: 56,
+    head: [["#", "Order ID", "Customer", "Phone", "Items Ordered", "Total", "Status", "Date"]],
+    body: tableData,
+    theme: "grid",
+    headStyles: { fillColor: [19, 24, 34], textColor: [245, 158, 11] },
+    styles: { fontSize: 8.5 }
+  });
+
+  doc.save(`Orders-Report-${Date.now()}.pdf`);
+  toast("Orders PDF Downloaded!");
 }
 
 // -----------------------------------------------------------
@@ -151,148 +236,6 @@ async function dashboard() {
   }
 }
 
-// Backup & PDF Reports Page Render
-function backupPage() {
-  $("#backupPage").innerHTML = `
-    <div class="panel">
-      <h3 style="margin-top:0; color:var(--accent);">💾 Data Backup & PDF Export Center</h3>
-      <p style="color:var(--muted); font-size:13px; margin-bottom:20px;">
-        Yahan se aap store ka complete database backup JSON me le sakte hain, aur Orders, Inventory ya Low Stock ki formatted PDF download kar sakte hain.
-      </p>
-
-      <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap:16px;">
-        <!-- Complete Backup -->
-        <div style="background:#0e121a; padding:16px; border-radius:8px; border:1px solid var(--line);">
-          <h4 style="margin:0 0 8px;">📦 Complete Data Backup</h4>
-          <p style="font-size:12px; color:var(--muted); margin:0 0 14px;">Products, orders aur order items ka full JSON backup download karein.</p>
-          <button class="btn green" onclick="downloadDatabaseBackup()">📥 Download Backup (JSON)</button>
-        </div>
-
-        <!-- Orders PDF -->
-        <div style="background:#0e121a; padding:16px; border-radius:8px; border:1px solid var(--line);">
-          <h4 style="margin:0 0 8px;">📋 Orders Report PDF</h4>
-          <p style="font-size:12px; color:var(--muted); margin:0 0 14px;">Sabhi received orders ki clean printable PDF file generate karein.</p>
-          <button class="btn" style="background:#222c3d; color:var(--accent);" onclick="exportOrdersPDF()">📄 Export Orders PDF</button>
-        </div>
-
-        <!-- All Stock PDF -->
-        <div style="background:#0e121a; padding:16px; border-radius:8px; border:1px solid var(--line);">
-          <h4 style="margin:0 0 8px;">🔩 Full Stock / Inventory PDF</h4>
-          <p style="font-size:12px; color:var(--muted); margin:0 0 14px;">Store me mojood sabhi parts aur unke current stock ki PDF report.</p>
-          <button class="btn" style="background:#222c3d; color:#fff;" onclick="exportStockPDF(false)">📄 Export All Stock PDF</button>
-        </div>
-
-        <!-- Low Stock Alert PDF -->
-        <div style="background:#0e121a; padding:16px; border-radius:8px; border:1px solid rgba(239, 68, 68, 0.4);">
-          <h4 style="margin:0 0 8px; color:var(--red);">🚨 Low Stock Alert PDF (≤ 5)</h4>
-          <p style="font-size:12px; color:var(--muted); margin:0 0 14px;">Keval un items ki list jinka stock khatam hone ki kagar par hai.</p>
-          <button class="btn danger" onclick="exportStockPDF(true)">🚨 Export Low Stock PDF</button>
-        </div>
-      </div>
-    </div>
-  `;
-}
-
-// 1. Download Full JSON Backup
-async function downloadDatabaseBackup() {
-  try {
-    toast("Preparing full backup...");
-    const backupData = await api("https://sparewallah.onrender.com/api/admin/backup");
-    const jsonBlob = new Blob([JSON.stringify(backupData, null, 2)], { type: "application/json" });
-    const dlLink = document.createElement("a");
-    dlLink.href = URL.createObjectURL(jsonBlob);
-    dlLink.download = `sparewallah_backup_${new Date().toISOString().slice(0, 10)}.json`;
-    dlLink.click();
-    toast("Backup downloaded successfully!");
-  } catch (err) {
-    toast("Backup failed: " + err.message);
-  }
-}
-
-// 2. Export Orders to PDF
-async function exportOrdersPDF() {
-  try {
-    toast("Generating Orders PDF...");
-    const ordersList = await api("https://sparewallah.onrender.com/api/admin/orders");
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
-
-    doc.setFontSize(16);
-    doc.text("Sparewallah - Orders Report", 14, 15);
-    doc.setFontSize(10);
-    doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 22);
-
-    const tableRows = ordersList.map(o => [
-      o.orderId || `ORD-${o.id}`,
-      o.customer?.name || "N/A",
-      o.customer?.phone || "N/A",
-      (o.items || []).map(i => `${i.name} (x${i.quantity})`).join(", "),
-      money(o.total),
-      o.status,
-      new Date(o.createdAt).toLocaleDateString()
-    ]);
-
-    doc.autoTable({
-      head: [["Order No", "Customer", "Phone", "Items", "Amount", "Status", "Date"]],
-      body: tableRows,
-      startY: 28,
-      styles: { fontSize: 8 },
-      headStyles: { fillColor: [245, 158, 11] }
-    });
-
-    doc.save(`orders_report_${new Date().toISOString().slice(0, 10)}.pdf`);
-    toast("Orders PDF downloaded!");
-  } catch (e) {
-    toast("PDF export error: " + e.message);
-  }
-}
-
-// 3. Export Stock / Low Stock PDF
-async function exportStockPDF(onlyLowStock = false) {
-  try {
-    toast(onlyLowStock ? "Generating Low Stock PDF..." : "Generating Stock PDF...");
-    let prods = await api("https://sparewallah.onrender.com/api/admin/products");
-    
-    if (onlyLowStock) {
-      prods = prods.filter(p => Number(p.stock) <= 5);
-    }
-
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
-
-    const title = onlyLowStock ? "Sparewallah - Low Stock Alert Report (<= 5 Units)" : "Sparewallah - Full Inventory & Stock Report";
-    doc.setFontSize(16);
-    doc.text(title, 14, 15);
-    doc.setFontSize(10);
-    doc.text(`Generated on: ${new Date().toLocaleString()} | Total Items: ${prods.length}`, 14, 22);
-
-    const rows = prods.map(p => [
-      p.name,
-      p.sku,
-      p.category || p.type || "General",
-      money(p.price),
-      `${p.stock} units`,
-      Number(p.stock) <= 5 ? "LOW STOCK" : "In Stock"
-    ]);
-
-    doc.autoTable({
-      head: [["Part Name", "SKU", "Category", "Price", "Available Stock", "Alert Status"]],
-      body: rows,
-      startY: 28,
-      styles: { fontSize: 9 },
-      headStyles: { fillColor: onlyLowStock ? [239, 68, 68] : [24, 32, 46] }
-    });
-
-    const filename = onlyLowStock 
-      ? `low_stock_alert_${new Date().toISOString().slice(0, 10)}.pdf` 
-      : `stock_inventory_${new Date().toISOString().slice(0, 10)}.pdf`;
-      
-    doc.save(filename);
-    toast("Stock PDF downloaded!");
-  } catch (e) {
-    toast("PDF export error: " + e.message);
-  }
-}
 
 // -----------------------------------------------------------
 // REPORT MODAL LOGIC (OPEN REPORTS & LOW STOCK ALERTS)
@@ -446,12 +389,17 @@ async function products() {
     ps.forEach(p => { if (p.category) cats.add(p.category); if (p.type) cats.add(p.type); });
     existingCategories = Array.from(cats);
 
-    $("#productsPage").innerHTML = `
-      <div class="panel">
-        <div class="actions" style="justify-content:space-between">
-          <h3>Parts Inventory (${ps.length})</h3>
-          <button class="btn green" onclick="showPage('add')">+ Add Spare Part</button>
-        </div>
+    // products() function ke andar actions div me PDF buttons jodein:
+     $("#productsPage").innerHTML = `
+       <div class="panel">
+         <div class="actions" style="justify-content:space-between; flex-wrap:wrap; gap:8px;">
+            <h3>Parts Inventory (${ps.length})</h3>
+            <div class="actions">
+              <button class="btn" style="background:#1e293b; color:var(--accent); border:1px solid var(--line)" onclick="downloadStockPDF(false)">📄 Download Full Stock PDF</button>
+              <button class="btn" style="background:rgba(239, 68, 68, 0.15); color:var(--red); border:1px solid rgba(239, 68, 68, 0.3)" onclick="downloadStockPDF(true)">🚨 Download Low Stock PDF</button>
+              <button class="btn green" onclick="showPage('add')">+ Add Spare Part</button>
+            </div>
+          </div>
         <div class="table-wrap">
           <table>
             <thead>
@@ -558,6 +506,98 @@ function closeHistoryModal() {
   if (m) m.classList.add("hidden");
 }
 
+     function backupPage() {
+  $("#backupPage").innerHTML = `
+    <div class="cards" style="grid-template-columns: 1fr 1fr; gap: 20px;">
+      
+      <!-- Backup Card -->
+      <div class="panel" style="margin-top:0;">
+        <h3 style="color:var(--accent);margin-top:0;">💾 Export Database Backup</h3>
+        <p style="color:var(--muted);font-size:13px;line-height:1.5;">
+          Apne pore store ka complete data (Products, Orders, Customers, Order Items) ek structured JSON file me download karein.
+        </p>
+        <button class="btn green" style="padding:10px 18px; margin-top:10px;" onclick="downloadFullBackup()">
+          ⬇ Download Full Backup (.json)
+        </button>
+      </div>
+
+      <!-- Restore Card -->
+      <div class="panel" style="margin-top:0;">
+        <h3 style="color:var(--red);margin-top:0;">🔄 Restore Database from Backup</h3>
+        <p style="color:var(--muted);font-size:13px;line-height:1.5;">
+          Purani backup file (.json) select karein data restore karne ke liye. <br>
+          <b style="color:var(--red)">Dhyan rahe:</b> Yeh current products aur orders ko backup file ke data se replace kar dega.
+        </p>
+        <input type="file" id="restoreFileInput" accept=".json" style="margin-top:10px;margin-bottom:12px;font-size:12px;">
+        <br>
+        <button class="btn danger" style="padding:10px 18px;" onclick="uploadAndRestoreBackup()">
+          ⬆ Restore Database Now
+        </button>
+      </div>
+
+    </div>
+  `;
+}
+
+// Download Backup file handler
+async function downloadFullBackup() {
+  try {
+    toast("Generating backup...");
+    const res = await fetch("https://sparewallah.onrender.com/api/admin/backup", {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    if (!res.ok) throw new Error("Backup failed");
+
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `sparewallah-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    toast("Backup downloaded successfully!");
+  } catch (err) {
+    toast("Error: " + err.message);
+  }
+}
+
+// Upload & Restore handler
+async function uploadAndRestoreBackup() {
+  const fileInput = document.getElementById("restoreFileInput");
+  if (!fileInput.files.length) return alert("Pehle ek backup .json file chunein!");
+
+  if (!confirm("Kya aap sach me database restore karna chahte hain? Current tables backup data se overwrite ho jayengi.")) {
+    return;
+  }
+
+  const file = fileInput.files[0];
+  const reader = new FileReader();
+
+  reader.onload = async (e) => {
+    try {
+      toast("Restoring data...");
+      const backupJson = JSON.parse(e.target.result);
+
+      const res = await api("https://sparewallah.onrender.com/api/admin/restore", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(backupJson)
+      });
+
+      toast(res.message || "Restored successfully!");
+      fileInput.value = "";
+      cachedProducts = [];
+      cachedOrders = [];
+      setTimeout(() => showPage("dashboard"), 1200);
+    } catch (err) {
+      toast("Restore failed: " + err.message);
+    }
+  };
+
+  reader.readAsText(file);
+}
+
 // -----------------------------------------------------------
 // 3. ORDERS PAGE (SINGLE LINE TABLE: ORDER NO, NAME, NO., ITEM, QTY, AMOUNT)
 // -----------------------------------------------------------
@@ -567,10 +607,13 @@ async function orders() {
     cachedOrders = os;
 
     $("#ordersPage").innerHTML = `
-      <div class="panel">
-        <div class="actions" style="justify-content:space-between;margin-bottom:12px;">
-          <h3>Orders List (${os.length})</h3>
-        </div>
+       <div class="panel">
+          <div class="actions" style="justify-content:space-between;margin-bottom:12px;">
+           <h3>Orders List (${os.length})</h3>
+            <button class="btn" style="background:#1e293b; color:var(--accent); border:1px solid var(--line)" onclick="downloadOrdersPDF()">
+               📄 Download Orders PDF
+            </button>
+          </div>
         <div class="table-wrap">
           <table class="orders-table">
             <thead>
