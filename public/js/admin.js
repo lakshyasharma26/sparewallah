@@ -117,11 +117,11 @@ function downloadStockPDF(onlyLowStock = false) {
     : cachedProducts;
 
   const title = onlyLowStock ? "SPAREWALLAH - LOW STOCK ALERT REPORT" : "SPAREWALLAH - COMPLETE STOCK INVENTORY";
-  doc.setFontSize(15);
+  doc.setFontSize(10);
   doc.setTextColor(245, 158, 11);
   doc.text(title, 14, 16);
 
-  doc.setFontSize(9);
+  doc.setFontSize(8);
   doc.setTextColor(100);
   doc.text(`Generated On: ${new Date().toLocaleString()} | Total Items: ${list.length}`, 14, 23);
 
@@ -146,12 +146,12 @@ function downloadStockPDF(onlyLowStock = false) {
     },
     styles: { 
       font: "helvetica",
-      fontSize: 9, 
-      cellPadding: 5,
+      fontSize: 8, 
+      cellPadding: 3,
       textColor: [30, 41, 59]
     },
     columnStyles: {
-      0: { cellWidth: 12, halign: "center" },
+      0: { cellWidth: 10, halign: "center" },
       4: { halign: "right", fontStyle: "bold" },
       5: { halign: "center" }
     }
