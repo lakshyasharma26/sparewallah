@@ -2,42 +2,47 @@ require("dotenv").config();
 
 const express = require("express");
 const path = require("path");
-const cors = require('cors');
+const cors = require("cors");
 const fs = require("fs");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const multer = require("multer");
 const { Pool } = require("pg");
 const { createClient } = require("@supabase/supabase-js");
-// CORS options setup
-const allowedOrigins = [
-  'https://sparewallah-public.vercel.app',
-  'http://localhost:3000',
-  'http://localhost:5173'
-];
 
-app.use(cors({
-  origin: function (origin, callback) {
-    // allow requests with no origin (like mobile apps or curl)
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.indexOf(origin) !== -1 || origin.endsWith('.vercel.app')) {
-      return callback(null, true);
-    }
-    return callback(new Error('Not allowed by CORS'));
-  },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-}));
-
-app.use(cors());
+// 1. App initialization pehle
 const app = express();
+
 const PORT = process.env.PORT || 5000;
 const ROOT = __dirname;
 const UPLOADS = path.join(ROOT, "uploads");
 
 if (!fs.existsSync(UPLOADS)) fs.mkdirSync(UPLOADS, { recursive: true });
 
+// 2. CORS setup
+const allowedOrigins = [
+  "https://sparewallah-public.vercel.app",
+  "http://localhost:3000",
+  "http://localhost:5173"
+];
+
+app.use(cors({
+  origin: function (origin, callback) {
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.indexOf(origin) !== -1 || origin.endsWith(".vercel.app")) {
+      return callback(null, true);
+    }
+    return callback(new Error("Not allowed by CORS"));
+  },
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"]
+}));
+
+// Preflight requests handling
+app.options("*", cors());
+
+// 3. Parsers aur static files
 app.use(express.json({ limit: "1mb" }));
 app.use(express.urlencoded({ extended: true }));
 app.use("/uploads", express.static(UPLOADS));
