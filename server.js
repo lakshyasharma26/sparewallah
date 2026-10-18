@@ -30,10 +30,6 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
-// Preflight requests ke liye
-app.options('*', cors());
-const cors = require('cors');
-
 app.use(cors());
 const app = express();
 const PORT = process.env.PORT || 5000;
