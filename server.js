@@ -250,6 +250,23 @@ app.post("/api/admin/login", async (req, res) => {
   }
 });
 
+app.get("/api/admin/backup", auth, async (_, res) => {
+  try {
+    const productsRes = await pool.query("SELECT * FROM products ORDER BY id ASC");
+    const ordersRes = await pool.query("SELECT * FROM orders ORDER BY id ASC");
+    const itemsRes = await pool.query("SELECT * FROM order_items ORDER BY id ASC");
+
+    res.json({
+      timestamp: new Date().toISOString(),
+      products: productsRes.rows,
+      orders: ordersRes.rows,
+      order_items: itemsRes.rows
+    });
+  } catch (e) {
+    res.status(500).json({ message: "Backup fetch failed: " + e.message });
+  }
+});
+
 app.get("/api/admin/me", auth, (req, res) => res.json({ email: req.admin.email }));
 
 app.get("/api/admin/products", auth, async (_, res) => {

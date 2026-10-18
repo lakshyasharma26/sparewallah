@@ -101,6 +101,7 @@ function showPage(page) {
   if (page === "products") products();
   if (page === "orders") orders();
   if (page === "add") addForm();
+  if (page === "backup") backupPage();
 }
 
 // -----------------------------------------------------------
@@ -147,6 +148,149 @@ async function dashboard() {
     `;
   } catch (e) {
     console.error(e);
+  }
+}
+
+// Backup & PDF Reports Page Render
+function backupPage() {
+  $("#backupPage").innerHTML = `
+    <div class="panel">
+      <h3 style="margin-top:0; color:var(--accent);">💾 Data Backup & PDF Export Center</h3>
+      <p style="color:var(--muted); font-size:13px; margin-bottom:20px;">
+        Yahan se aap store ka complete database backup JSON me le sakte hain, aur Orders, Inventory ya Low Stock ki formatted PDF download kar sakte hain.
+      </p>
+
+      <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap:16px;">
+        <!-- Complete Backup -->
+        <div style="background:#0e121a; padding:16px; border-radius:8px; border:1px solid var(--line);">
+          <h4 style="margin:0 0 8px;">📦 Complete Data Backup</h4>
+          <p style="font-size:12px; color:var(--muted); margin:0 0 14px;">Products, orders aur order items ka full JSON backup download karein.</p>
+          <button class="btn green" onclick="downloadDatabaseBackup()">📥 Download Backup (JSON)</button>
+        </div>
+
+        <!-- Orders PDF -->
+        <div style="background:#0e121a; padding:16px; border-radius:8px; border:1px solid var(--line);">
+          <h4 style="margin:0 0 8px;">📋 Orders Report PDF</h4>
+          <p style="font-size:12px; color:var(--muted); margin:0 0 14px;">Sabhi received orders ki clean printable PDF file generate karein.</p>
+          <button class="btn" style="background:#222c3d; color:var(--accent);" onclick="exportOrdersPDF()">📄 Export Orders PDF</button>
+        </div>
+
+        <!-- All Stock PDF -->
+        <div style="background:#0e121a; padding:16px; border-radius:8px; border:1px solid var(--line);">
+          <h4 style="margin:0 0 8px;">🔩 Full Stock / Inventory PDF</h4>
+          <p style="font-size:12px; color:var(--muted); margin:0 0 14px;">Store me mojood sabhi parts aur unke current stock ki PDF report.</p>
+          <button class="btn" style="background:#222c3d; color:#fff;" onclick="exportStockPDF(false)">📄 Export All Stock PDF</button>
+        </div>
+
+        <!-- Low Stock Alert PDF -->
+        <div style="background:#0e121a; padding:16px; border-radius:8px; border:1px solid rgba(239, 68, 68, 0.4);">
+          <h4 style="margin:0 0 8px; color:var(--red);">🚨 Low Stock Alert PDF (≤ 5)</h4>
+          <p style="font-size:12px; color:var(--muted); margin:0 0 14px;">Keval un items ki list jinka stock khatam hone ki kagar par hai.</p>
+          <button class="btn danger" onclick="exportStockPDF(true)">🚨 Export Low Stock PDF</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// 1. Download Full JSON Backup
+async function downloadDatabaseBackup() {
+  try {
+    toast("Preparing full backup...");
+    const backupData = await api("https://sparewallah.onrender.com/api/admin/backup");
+    const jsonBlob = new Blob([JSON.stringify(backupData, null, 2)], { type: "application/json" });
+    const dlLink = document.createElement("a");
+    dlLink.href = URL.createObjectURL(jsonBlob);
+    dlLink.download = `sparewallah_backup_${new Date().toISOString().slice(0, 10)}.json`;
+    dlLink.click();
+    toast("Backup downloaded successfully!");
+  } catch (err) {
+    toast("Backup failed: " + err.message);
+  }
+}
+
+// 2. Export Orders to PDF
+async function exportOrdersPDF() {
+  try {
+    toast("Generating Orders PDF...");
+    const ordersList = await api("https://sparewallah.onrender.com/api/admin/orders");
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+
+    doc.setFontSize(16);
+    doc.text("Sparewallah - Orders Report", 14, 15);
+    doc.setFontSize(10);
+    doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 22);
+
+    const tableRows = ordersList.map(o => [
+      o.orderId || `ORD-${o.id}`,
+      o.customer?.name || "N/A",
+      o.customer?.phone || "N/A",
+      (o.items || []).map(i => `${i.name} (x${i.quantity})`).join(", "),
+      money(o.total),
+      o.status,
+      new Date(o.createdAt).toLocaleDateString()
+    ]);
+
+    doc.autoTable({
+      head: [["Order No", "Customer", "Phone", "Items", "Amount", "Status", "Date"]],
+      body: tableRows,
+      startY: 28,
+      styles: { fontSize: 8 },
+      headStyles: { fillColor: [245, 158, 11] }
+    });
+
+    doc.save(`orders_report_${new Date().toISOString().slice(0, 10)}.pdf`);
+    toast("Orders PDF downloaded!");
+  } catch (e) {
+    toast("PDF export error: " + e.message);
+  }
+}
+
+// 3. Export Stock / Low Stock PDF
+async function exportStockPDF(onlyLowStock = false) {
+  try {
+    toast(onlyLowStock ? "Generating Low Stock PDF..." : "Generating Stock PDF...");
+    let prods = await api("https://sparewallah.onrender.com/api/admin/products");
+    
+    if (onlyLowStock) {
+      prods = prods.filter(p => Number(p.stock) <= 5);
+    }
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+
+    const title = onlyLowStock ? "Sparewallah - Low Stock Alert Report (<= 5 Units)" : "Sparewallah - Full Inventory & Stock Report";
+    doc.setFontSize(16);
+    doc.text(title, 14, 15);
+    doc.setFontSize(10);
+    doc.text(`Generated on: ${new Date().toLocaleString()} | Total Items: ${prods.length}`, 14, 22);
+
+    const rows = prods.map(p => [
+      p.name,
+      p.sku,
+      p.category || p.type || "General",
+      money(p.price),
+      `${p.stock} units`,
+      Number(p.stock) <= 5 ? "LOW STOCK" : "In Stock"
+    ]);
+
+    doc.autoTable({
+      head: [["Part Name", "SKU", "Category", "Price", "Available Stock", "Alert Status"]],
+      body: rows,
+      startY: 28,
+      styles: { fontSize: 9 },
+      headStyles: { fillColor: onlyLowStock ? [239, 68, 68] : [24, 32, 46] }
+    });
+
+    const filename = onlyLowStock 
+      ? `low_stock_alert_${new Date().toISOString().slice(0, 10)}.pdf` 
+      : `stock_inventory_${new Date().toISOString().slice(0, 10)}.pdf`;
+      
+    doc.save(filename);
+    toast("Stock PDF downloaded!");
+  } catch (e) {
+    toast("PDF export error: " + e.message);
   }
 }
 

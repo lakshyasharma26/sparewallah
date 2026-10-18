@@ -8,6 +8,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Teko:wght@600;700&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+  <!-- jsPDF aur AutoTable Plugin -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 </head>
 <body>
 
@@ -42,6 +45,7 @@
       <button class="side" data-page="products">🔩 Spare Parts</button>
       <button class="side" data-page="orders">📦 Orders</button>
       <button class="side" data-page="add">➕ Add New Part</button>
+      <button class="side" data-page="backup">💾 Backup & Reports</button>
     </div>
     <button id="logout" class="logout">🚪 Logout</button>
   </aside>
@@ -67,6 +71,7 @@
     <section id="productsPage" class="page hidden"></section>
     <section id="ordersPage" class="page hidden"></section>
     <section id="addPage" class="page hidden"></section>
+    <section id="backupPage" class="page hidden"></section>
   </main>
 </div>
 
