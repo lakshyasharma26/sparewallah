@@ -2,13 +2,39 @@ require("dotenv").config();
 
 const express = require("express");
 const path = require("path");
+const cors = require('cors');
 const fs = require("fs");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const multer = require("multer");
 const { Pool } = require("pg");
 const { createClient } = require("@supabase/supabase-js");
+// CORS options setup
+const allowedOrigins = [
+  'https://sparewallah-public.vercel.app',
+  'http://localhost:3000',
+  'http://localhost:5173'
+];
 
+app.use(cors({
+  origin: function (origin, callback) {
+    // allow requests with no origin (like mobile apps or curl)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.indexOf(origin) !== -1 || origin.endsWith('.vercel.app')) {
+      return callback(null, true);
+    }
+    return callback(new Error('Not allowed by CORS'));
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
+// Preflight requests ke liye
+app.options('*', cors());
+const cors = require('cors');
+
+app.use(cors());
 const app = express();
 const PORT = process.env.PORT || 5000;
 const ROOT = __dirname;
