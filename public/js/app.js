@@ -34,7 +34,7 @@ const defaultCategoryIcons = {
 async function initStore() {
   updateCartCounters();
   try {
-    const res = await fetch("/api/products");
+    const res = await fetch("https://sparewallah.onrender.com/api/products");
     state.allProducts = await res.json();
     buildCategoryStructure();
     renderTopSlider();
@@ -463,7 +463,7 @@ $("#checkoutForm").addEventListener("submit", async e => {
   e.preventDefault();
   const customer = Object.fromEntries(new FormData(e.target).entries());
 
-  const r = await fetch("/api/orders", {
+  const r = await fetch("https://sparewallah.onrender.com/api/orders", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ customer, items: state.cart.map(x => ({ productId: x.productId, quantity: x.quantity })) })
@@ -482,5 +482,5 @@ $("#checkoutForm").addEventListener("submit", async e => {
   window.open(`https://wa.me/${number}?text=${encodeURIComponent(msg)}`, "_blank");
 });
 
-fetch("/api/config").then(r => r.json()).then(c => window.WHATSAPP_NUMBER = c.whatsappNumber).catch(() => {});
+fetch("https://sparewallah.onrender.com/api/config").then(r => r.json()).then(c => window.WHATSAPP_NUMBER = c.whatsappNumber).catch(() => {});
 initStore();

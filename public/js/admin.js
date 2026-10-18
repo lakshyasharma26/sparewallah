@@ -31,7 +31,7 @@ function showApp() {
   if (loginView) loginView.classList.add("hidden");
   if (appView) appView.classList.remove("hidden");
   
-  api("/api/admin/me").then(x => {
+  api("https://sparewallah.onrender.com/api/admin/me").then(x => {
     const adminEmail = document.getElementById("adminEmail");
     if (adminEmail) adminEmail.textContent = x.email;
   }).catch(() => {});
@@ -62,7 +62,7 @@ window.addEventListener("DOMContentLoaded", () => {
       const msgEl = document.getElementById("loginMsg");
       
       try {
-        const data = await (await fetch("/api/admin/login", {
+        const data = await (await fetch("https://sparewallah.onrender.com/api/admin/login", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email, password })
@@ -108,7 +108,7 @@ function showPage(page) {
 // -----------------------------------------------------------
 async function dashboard() {
   try {
-    const s = await api("/api/admin/stats");
+    const s = await api("https://sparewallah.onrender.com/api/admin/stats");
 
     $("#dashboardPage").innerHTML = `
       <div class="cards">
@@ -155,8 +155,8 @@ async function dashboard() {
 // -----------------------------------------------------------
 async function openReportModal(type) {
   try {
-    cachedProducts = await api("/api/admin/products");
-    cachedOrders = await api("/api/admin/orders");
+    cachedProducts = await api("https://sparewallah.onrender.com/api/admin/products");
+    cachedOrders = await api("https://sparewallah.onrender.com/api/admin/orders");
 
     const modal = $("#reportModal");
     const titleEl = $("#reportModalTitle");
@@ -295,7 +295,7 @@ function closeReportModal() {
 // -----------------------------------------------------------
 async function products() {
   try {
-    const ps = await api("/api/admin/products");
+    const ps = await api("https://sparewallah.onrender.com/api/admin/products");
     cachedProducts = ps;
 
     const cats = new Set(existingCategories);
@@ -356,7 +356,7 @@ async function viewProductHistory(productId) {
   if (!product) return;
 
   try {
-    cachedOrders = await api("/api/admin/orders");
+    cachedOrders = await api("https://sparewallah.onrender.com/api/admin/orders");
 
     const relevantOrders = [];
     let totalSoldUnits = 0;
@@ -419,7 +419,7 @@ function closeHistoryModal() {
 // -----------------------------------------------------------
 async function orders() {
   try {
-    const os = await api("/api/admin/orders");
+    const os = await api("https://sparewallah.onrender.com/api/admin/orders");
     cachedOrders = os;
 
     $("#ordersPage").innerHTML = `
@@ -474,7 +474,7 @@ async function orders() {
 // -----------------------------------------------------------
 async function changeStatus(id, status) {
   try {
-    await api(`/api/admin/orders/${id}/status`, {
+    await api(`https://sparewallah.onrender.com/api/admin/orders/${id}/status`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status })
@@ -639,7 +639,7 @@ async function submitProduct(e) {
 
     fd.set("description", JSON.stringify(detailedDescObj));
 
-    await api(editingId ? `/api/admin/products/${editingId}` : "/api/admin/products", {
+    await api(editingId ? `https://sparewallah.onrender.com/api/admin/products/${editingId}` : "https://sparewallah.onrender.com/api/admin/products", {
       method: editingId ? "PUT" : "POST",
       body: fd
     });
@@ -659,7 +659,7 @@ function editProduct(p) {
 async function deleteProduct(id) {
   if (!confirm("Delete this spare part permanently?")) return;
   try {
-    await api(`/api/admin/products/${id}`, { method: "DELETE" });
+    await api(`https://sparewallah.onrender.com/api/admin/products/${id}`, { method: "DELETE" });
     toast("Part deleted");
     products();
   } catch (e) {
