@@ -203,7 +203,7 @@ function openProductDetail(productId) {
   state.detailQty = 1;
   $("#detailQtyValue").textContent = "1";
 
-  // Hide list and show product detail (No window.scrollTo to prevent unwanted jumps)
+  // Hide list and show product detail
   $("#storeLayoutView").classList.add("hidden");
   $("#productDetailView").classList.remove("hidden");
 
@@ -403,14 +403,56 @@ function renderDrawerCart() {
 
 function openCart() { renderDrawerCart(); $("#cartDrawer").classList.add("open"); }
 function closeCart() { $("#cartDrawer").classList.remove("open"); }
+
+// 6. ORDER SUMMARY POPUP & DIRECT WHATSAPP FLOW
 function openCheckout() {
   if (!state.cart.length) return toast("Cart is empty");
   closeCart();
+
+  const listContainer = $("#checkoutItemsList");
+  const totalContainer = $("#checkoutTotalAmount");
+
+  if (listContainer) {
+    listContainer.innerHTML = state.cart.map((x, index) => `
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--line);font-size:13px;">
+        <div style="text-align:left;">
+          <div style="font-weight:600;color:#fff;">${index + 1}. ${esc(x.name)}</div>
+          <div style="color:var(--muted);font-size:11.5px;">${money(x.price)} × ${x.quantity}</div>
+        </div>
+        <div style="font-weight:700;color:var(--accent);">${money(x.price * x.quantity)}</div>
+      </div>
+    `).join("");
+  }
+
+  const grandTotal = state.cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  if (totalContainer) totalContainer.textContent = money(grandTotal);
+
   $("#checkoutModal").classList.add("open");
 }
-function closeCheckout() { $("#checkoutModal").classList.remove("open"); }
 
-// Search Functionality
+function closeCheckout() {
+  $("#checkoutModal").classList.remove("open");
+}
+
+function sendOrderViaWhatsApp() {
+  if (!state.cart.length) return toast("Cart is empty");
+
+  const number = (window.WHATSAPP_NUMBER || "917668133191").replace(/^"|"$/g, "");
+  const grandTotal = state.cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+
+  const lines = state.cart.map((x, i) => `${i + 1}. *${x.name}*\n   Qty: ${x.quantity} | Subtotal: ${money(x.price * x.quantity)}`).join("\n\n");
+  const msg = `🛒 *NEW SPARE PARTS ORDER / INQUIRY*\n\n*Items List:*\n${lines}\n\n*Total Payable:* ${money(grandTotal)}\n\nKripya order confirmation aur availability confirm karein.`;
+
+  window.open(`https://wa.me/${number}?text=${encodeURIComponent(msg)}`, "_blank");
+
+  // Cart clear and close
+  state.cart = [];
+  saveCart();
+  closeCheckout();
+  toast("Order sent on WhatsApp!");
+}
+
+// 7. SEARCH FUNCTIONALITY
 let searchTimer;
 function debouncedSearch(val) {
   clearTimeout(searchTimer);
@@ -458,29 +500,10 @@ function debouncedSearch(val) {
   }, 250);
 }
 
-// WhatsApp Order Submit
-$("#checkoutForm").addEventListener("submit", async e => {
-  e.preventDefault();
-  const customer = Object.fromEntries(new FormData(e.target).entries());
+// WhatsApp Number Config fetch & Store Initialization
+fetch("https://sparewallah.onrender.com/api/config")
+  .then(r => r.json())
+  .then(c => window.WHATSAPP_NUMBER = c.whatsappNumber)
+  .catch(() => {});
 
-  const r = await fetch("https://sparewallah.onrender.com/api/orders", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ customer, items: state.cart.map(x => ({ productId: x.productId, quantity: x.quantity })) })
-  });
-
-  const data = await r.json();
-  if (!r.ok) return toast(data.message || "Failed to order");
-
-  const number = (window.WHATSAPP_NUMBER || "").replace(/^"|"$/g, "");
-  const lines = state.cart.map((x, i) => `${i + 1}. ${x.name} | Qty: ${x.quantity} | ${money(x.price * x.quantity)}`).join("\n");
-  const msg = `🛒 NEW SPARE PARTS ORDER FROM 👉\n\nOrder ID: ${data.orderId}\nCustomer: ${customer.name}\nPhone: ${customer.phone}\nAddress: ${customer.address}\n\nItems:\n${lines}\n\nTotal: ${money(data.total)}`;
-
-  state.cart = [];
-  saveCart();
-  closeCheckout();
-  window.open(`https://wa.me/${number}?text=${encodeURIComponent(msg)}`, "_blank");
-});
-
-fetch("https://sparewallah.onrender.com/api/config").then(r => r.json()).then(c => window.WHATSAPP_NUMBER = c.whatsappNumber).catch(() => {});
 initStore();

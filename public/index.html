@@ -272,22 +272,29 @@
   </div>
 
   <!-- CHECKOUT MODAL -->
+  <!-- CHECKOUT / ORDER SUMMARY MODAL -->
   <div id="checkoutModal" class="modal">
     <div class="modal-card">
       <div class="drawer-head">
-        <h2>Complete Workshop Order</h2>
+        <h2>Order Summary</h2>
         <button onclick="closeCheckout()">×</button>
       </div>
-      <form id="checkoutForm">
-        <input name="name" placeholder="Full name / Workshop name" required>
-        <input name="phone" placeholder="WhatsApp Number" required>
-        <textarea name="address" placeholder="Delivery Address with landmark" required></textarea>
-        <div class="two-inputs">
-          <input name="city" placeholder="City">
-          <input name="pincode" placeholder="PIN Code">
-        </div>
-        <button class="btn-primary-add full" type="submit">Confirm Order on WhatsApp</button>
-      </form>
+
+      <!-- Items List Container -->
+      <div id="checkoutItemsList" style="margin: 15px 0; max-height: 240px; overflow-y: auto;">
+        <!-- Javascript dynamically fill karega -->
+      </div>
+
+      <!-- Total Amount -->
+      <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-top: 1px solid var(--line); font-size: 15px; font-weight: 700; margin-bottom: 15px;">
+        <span>Total Payable:</span>
+        <span id="checkoutTotalAmount" style="color: var(--accent); font-size: 18px;">₹0</span>
+      </div>
+
+      <!-- WhatsApp Direct Send Button -->
+      <button class="btn-primary-add full" onclick="sendOrderViaWhatsApp()" style="background: #25d366; color: #fff; display: flex; align-items: center; justify-content: center; gap: 8px;">
+        💬 Send Order on WhatsApp
+      </button>
     </div>
   </div>
 
